@@ -3,7 +3,7 @@ suppressPackageStartupMessages({
     library(shiny)
     library(shinyjs)
     library(shinydashboard)
-    library(shinyWidgets)
+    #library(shinyWidgets)
     library(googlesheets4)
     library(DT)
     library(dplyr)
@@ -27,17 +27,20 @@ filterUI <- function(id, multi = FALSE) {
 
     box(width = 12, title = textOutput(ns("title")),
         solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-        pickerInput(
-            inputId = ns("options"),
-            label = NULL,
-            choices = choices,
-            options = list(
-                `actions-box` = TRUE, # select-all/deselect-all
-                `live-search` = TRUE, # search the options
-                `selected-text-format` = "count > 1"), # show "N options selected" for more than 1 selection
-            selected = choices,
-            multiple = TRUE
-        )
+        actionButton(ns("select_all"), "Select All"),
+        actionButton(ns("unselect_all"), "Unselect All"),
+        checkboxGroupInput(ns("options"), NULL, choices, choices)
+        # pickerInput(
+        #     inputId = ns("options"),
+        #     label = NULL,
+        #     choices = choices,
+        #     options = list(
+        #         `actions-box` = TRUE, # select-all/deselect-all
+        #         `live-search` = TRUE, # search the options
+        #         `selected-text-format` = "count > 1"), # show "N options selected" for more than 1 selection
+        #     selected = choices,
+        #     multiple = TRUE
+        # )
     )
 }
 
@@ -48,7 +51,13 @@ filterServer <- function(id, title, multi = FALSE) {
         choices <- get_opts(full_data, id, multi)
 
         # update choices ----
-        debug_msg(id, "update choices")
+        observeEvent(input$select_all, {
+            updateCheckboxGroupInput(session, "options", selected = choices)
+        })
+
+        observeEvent(input$unselect_all, {
+            updateCheckboxGroupInput(session, "options", selected = character(0))
+        })
 
         # output$title ----
         output$title <- renderText({ debug_msg(id, "title")
@@ -62,6 +71,7 @@ filterServer <- function(id, title, multi = FALSE) {
 
         # return vector of selected films ----
         reactive({ debug_msg(id, "filter_opts")
+            if (all(choices %in% input$options)) return(TRUE)
             filter_opts(full_data[[id]], input$options, multi)
         })
     })
