@@ -3,11 +3,12 @@ suppressPackageStartupMessages({
     library(shiny)
     library(shinyjs)
     library(shinydashboard)
-    #library(shinyWidgets)
+    library(shinyWidgets)
     library(googlesheets4)
     library(DT)
     library(dplyr)
     library(tidyr)
+    library(glue)
 })
 
 # setup ----
@@ -25,22 +26,33 @@ filterUI <- function(id, multi = FALSE) {
 
     choices <- get_opts(full_data, id, multi)
 
-    box(width = 12, title = textOutput(ns("title")),
-        solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-        actionButton(ns("select_all"), "Select All"),
-        actionButton(ns("unselect_all"), "Unselect All"),
-        checkboxGroupInput(ns("options"), NULL, choices, choices)
-        # pickerInput(
-        #     inputId = ns("options"),
-        #     label = NULL,
-        #     choices = choices,
-        #     options = list(
-        #         `actions-box` = TRUE, # select-all/deselect-all
-        #         `live-search` = TRUE, # search the options
-        #         `selected-text-format` = "count > 1"), # show "N options selected" for more than 1 selection
-        #     selected = choices,
-        #     multiple = TRUE
-        # )
+    input_ui <- pickerInput(
+        inputId = ns("options"),
+        label = NULL,
+        choices = choices,
+        options = list(
+            `actions-box` = TRUE, # select-all/deselect-all
+            `live-search` = TRUE, # search the options
+            `selected-text-format` = "count > 1"), # show "N options selected" for more than 1 selection
+        selected = choices,
+        multiple = TRUE
+    )
+
+    if (id == "year") {
+        input_ui <- sliderInput(
+            inputId = ns("options"),
+            label = NULL,
+            min = min(choices),
+            max = max(choices),
+            value = range(choices),
+            step = 1,
+            sep = ""
+        )
+    }
+
+    tags$div(class = id,
+        textOutput(ns("title")),
+        input_ui
     )
 }
 
@@ -50,29 +62,30 @@ filterServer <- function(id, title, multi = FALSE) {
 
         choices <- get_opts(full_data, id, multi)
 
-        # update choices ----
-        observeEvent(input$select_all, {
-            updateCheckboxGroupInput(session, "options", selected = choices)
-        })
-
-        observeEvent(input$unselect_all, {
-            updateCheckboxGroupInput(session, "options", selected = character(0))
-        })
-
         # output$title ----
         output$title <- renderText({ debug_msg(id, "title")
-            if (all(choices %in% input$options)) { # all options selected
-                opts <- "All"
+            if (id == "year") {
+                opts <- glue("({input$options[[1]]} to {input$options[[2]]})")
+            } else if (all(choices %in% input$options)) { # all options selected
+                opts <- "(All)"
             } else {
-                opts <- paste(input$options, collapse = ", ")
+                #opts <- paste(input$options, collapse = ", ")
+                opts <- ""
             }
-            sprintf("%s (%s)", title, opts)
+            sprintf("%s %s", title, opts)
         })
 
         # return vector of selected films ----
         reactive({ debug_msg(id, "filter_opts")
-            if (all(choices %in% input$options)) return(TRUE)
-            filter_opts(full_data[[id]], input$options, multi)
+            if (id == "year") {
+                if (min(choices) == input$options[[1]] &
+                    max(choices) == input$options[[2]]) return(TRUE)
+
+                filter_opts(full_data[[id]], input$options[[1]]:input$options[[2]], multi)
+            } else {
+                if (all(choices %in% input$options)) return(TRUE)
+                filter_opts(full_data[[id]], input$options, multi)
+            }
         })
     })
 }
@@ -80,7 +93,7 @@ filterServer <- function(id, title, multi = FALSE) {
 
 ## UI ----
 ui <- dashboardPage(
-    skin = "purple",
+    skin = "black",
     dashboardHeader(title = "Seen and To See",
         titleWidth = "calc(100% - 44px)" # puts sidebar toggle on right
     ),
@@ -93,9 +106,10 @@ ui <- dashboardPage(
             tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
             tags$script(src = "custom.js")
         ),
-        HTML("<div style='padding: 1em;'><a href='https://docs.google.com/spreadsheets/d/16aZ78_QicXs6fn1fsLJefestSMpRAqjPLAVYrTBIFVc/'>Spreadsheet</a> maintained by <a href='https://www.tiktok.com/@ariavelz'>@ariavelz on TikTok</a>.</div>"),
+        HTML("<div style='padding: 1em;'>Search for films featuring queer women. <a href='https://docs.google.com/spreadsheets/d/16aZ78_QicXs6fn1fsLJefestSMpRAqjPLAVYrTBIFVc/'>Spreadsheet</a> maintained by <a href='https://www.tiktok.com/@ariavelz'>@ariavelz on TikTok</a>.</div>"),
 
         column(width = 4,
+            box(id = "filters", width = 12,
                filterUI("genre", multi = TRUE),
                filterUI("year"),
                filterUI("lang", multi = TRUE),
@@ -103,11 +117,22 @@ ui <- dashboardPage(
                filterUI("where", multi = TRUE),
                filterUI("happy"),
                filterUI("death")
+            )
         ),
 
         box(width = 8, title = textOutput("filter_title"),
             solidHeader = TRUE,
-            checkboxGroupInput("show_cols", NULL, choices = c(), inline = TRUE),
+            checkboxGroupButtons(
+                inputId = "show_cols",
+                label = NULL,
+                choices = names(full_data),
+                selected = names(full_data)[[1]],
+                checkIcon = list(
+                    yes = tags$i(class = "fa fa-check-square",
+                                 style = "color: #DEA3AF"),
+                    no = tags$i(class = "fa fa-square-o",
+                                style = "color: #78CCF5"))
+            ),
             DTOutput("filter_table")
         )
     )
@@ -123,16 +148,6 @@ server <- function(input, output, session) {
     in_happy <- filterServer("happy", "Does the queer couple end up together?")
     in_death <- filterServer("death", "Does a queer woman die?")
 
-    # update filtered data ----
-    observe({
-        cols <- names(full_data)
-        updateCheckboxGroupInput(
-            session, "show_cols",
-            choices = cols,
-            selected = cols[1]
-        )
-    })
-
     filter_data <- reactive({
         # return selected rows
         sel <- in_genre() & in_year() & in_lang() & in_rec() &
@@ -140,7 +155,7 @@ server <- function(input, output, session) {
         full_data[sel, input$show_cols]
     })
 
-    output$filter_table <- renderDT(filter_data())
+    output$filter_table <- renderDT(filter_data(), rownames = FALSE)
 
     output$filter_title <- renderText({
         n_filtered_films <- nrow(filter_data())

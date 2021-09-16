@@ -1,1 +1,48 @@
 /* app-specific css */
+
+section.content {
+  margin-top: 30px;
+  box-shadow: 0 -5px 0 0px var(--purple),
+              0 -10px 0 0px var(--blue),
+              0 -15px 0 0px var(--green),
+              0 -20px 0 0px var(--yellow),
+              0 -25px 0 0px var(--orange),
+              0 -30px 0 0px var(--red);
+}
+
+#filters button {
+  font-weight: 800;
+  color: white !important;
+}
+
+.genre button, .genre select {
+  background-color: var(--red) !important;
+}
+
+.year .irs--shiny .irs-from,
+.year .irs--shiny .irs-to,
+.year .irs--shiny .irs-single,
+.year .irs--shiny .irs-bar {
+  background-color: var(--orange) !important;
+}
+
+
+.lang button, .lang select {
+  background-color: var(--yellow) !important;
+}
+
+.rec button, .rec select {
+  background-color: var(--green) !important;
+}
+
+.where button, .where select {
+  background-color: var(--blue) !important;
+}
+
+.happy button, .happy select {
+  background-color: var(--purple) !important;
+}
+
+.death button, .death select {
+  background-color: var(--grey) !important;
+}

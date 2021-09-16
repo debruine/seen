@@ -3,11 +3,14 @@
 :root {
   --grey: rgb(34,45,50);
   --red: rgb(221, 75, 57);
-  --yellow: rgb(243, 156, 18);
+  --orange: rgb(243, 156, 18);
+  --yellow: rgb(191, 188, 15);
   --green: rgb(0, 166, 90);
   --blue: rgb(60, 141, 188);
   --purple: rgb(96, 92, 168);
-  
+  --lightblue: #78CCF5;
+  --pink: #DEA3AF;
+
   --tgrey: rgba(34,45,50,.5);
   --tred: rgba(221, 75, 57,.5);
   --tyellow: rgba(243, 156, 18,.5);
