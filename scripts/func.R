@@ -16,7 +16,7 @@ load_data <- function() { debug_msg("loading data...")
   gs4_deauth()
   url <- "https://docs.google.com/spreadsheets/d/16aZ78_QicXs6fn1fsLJefestSMpRAqjPLAVYrTBIFVc/"
   main <- read_sheet(url, skip = 2)
-  spoilers <- read_sheet(url, sheet = 2, skip = 1)
+  spoilers <- read_sheet(url, sheet = 2, skip = 0)
 
    left_join(main, spoilers,
                    by = c("Title", "Year", "Do I Recommend?")) %>%
